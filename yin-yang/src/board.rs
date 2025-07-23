@@ -1,5 +1,7 @@
-use std::{fmt, iter, num::ParseIntError, str::FromStr};
-use crate::puzzle::{Player, PatternMatch, LemmaBasedGridSolver};
+use {
+    crate::puzzle::{LemmaBasedGridSolver, PatternMatch, Player},
+    std::{fmt, iter, num::ParseIntError, str::FromStr},
+};
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Tile {
@@ -65,9 +67,17 @@ impl Board {
     }
 
     #[inline]
-    fn to_index(&self, x: usize, y:usize) -> usize {
+    fn to_index(&self, x: usize, y: usize) -> usize {
         self.width * y + x
     }
+
+    // fn _get_sub_grid(&self,(x, y): (usize, usize), w: usize, h: usize) -> &Board {
+    //     let mut r = Board { width: w, grid: vec![]};
+    //     for i in 0..w { for j in 0..h {
+    //         r.grid.push(self[(x + i, y + j)]);
+    //     }}
+    //     &r.to_owned()
+    // }
 }
 
 impl std::ops::Index<(usize, usize)> for Board {
@@ -150,7 +160,7 @@ impl FromStr for Board {
 pub struct Move {
     pub x: usize,
     pub y: usize,
-    pub val: Tile
+    pub val: Tile,
 }
 
 impl Move {
@@ -158,7 +168,7 @@ impl Move {
         Self {
             x: self.x + at.0,
             y: self.y + at.1,
-            val: self.val.clone()
+            val: self.val.clone(),
         }
     }
 }
@@ -169,10 +179,15 @@ impl FromStr for Move {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut s = s.trim().split_whitespace();
         let (x, y) = (s.next().unwrap().parse()?, s.next().unwrap().parse()?);
-        let val = s.next().unwrap().chars().next().ok_or(BoardError::Format)?.try_into()?;
-        Ok(Move {x, y, val})
+        let val = s
+            .next()
+            .unwrap()
+            .chars()
+            .next()
+            .ok_or(BoardError::Format)?
+            .try_into()?;
+        Ok(Move { x, y, val })
     }
-
 }
 
 impl crate::puzzle::Player for Board {
@@ -185,9 +200,10 @@ impl crate::puzzle::Player for Board {
 }
 type Moves = Vec<Move>;
 
+#[derive(Debug)]
 pub struct PatternLemma {
     src: Board,
-    solution: Moves,
+    pub solution: Moves,
 }
 
 impl FromStr for PatternLemma {
@@ -197,20 +213,14 @@ impl FromStr for PatternLemma {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (src, solution) = s.split_once('\n').ok_or(BoardError::Format)?;
         let src = src.parse()?;
-        let solution = solution.lines()
-            .map(|l| l.parse().unwrap())
-            .collect();
+        let solution = solution.lines().map(|l| l.parse().unwrap()).collect();
 
-        Ok(Self{
-            src, solution
-        })
+        Ok(Self { src, solution })
     }
 }
 
-impl LemmaBasedGridSolver for Board {
-    type Lemma = PatternLemma;
-
-    fn apply(&mut self, l: &Self::Lemma) -> bool {
+impl LemmaBasedGridSolver<PatternLemma> for Board {
+    fn apply(&mut self, l: &PatternLemma) -> bool {
         if let Some(x) = self.find_index(&l.src) {
             for m in &l.solution {
                 self.play(m.add(self.to_xy(x)));
@@ -234,9 +244,13 @@ impl crate::PatternMatch for Board {
                             break;
                         }
                     }
-                    if !match_found {break;}
+                    if !match_found {
+                        break;
+                    }
                 }
-                if match_found {return Some(self.to_index(x, y))}
+                if match_found {
+                    return Some(self.to_index(x, y));
+                }
             }
         }
         None
@@ -248,7 +262,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn match_works() -> Result<(), BoardError>{
+    fn match_works() -> Result<(), BoardError> {
         let board: Board = "6;hBdWaBWbWBdWaBaWBWd".parse()?;
         let pat: Board = "2;aBWa".parse()?;
         let pat1: Board = "2;aBWa".parse()?;
@@ -264,7 +278,7 @@ mod tests {
     fn lemma_applies() -> Result<(), BoardError> {
         let mut board: Board = "6;hBdWBBWbWBdWaBaWBWd".parse()?;
         let lemma: PatternLemma = "2;BaBB\n1 0 W".parse()?;
-        println!("{board}\n{}, {:?}",lemma.src, lemma.solution);
+        println!("{board}\n{}, {:?}", lemma.src, lemma.solution);
         board.apply(&lemma);
         println!("{board}");
         println!("lemma_applies");

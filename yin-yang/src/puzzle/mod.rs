@@ -1,28 +1,41 @@
-use std::str::FromStr;
+use {crate::PatternLemma, std::str::FromStr};
+
+pub mod rules;
 
 #[derive(Debug)]
 enum State {
-    Done,
+    _Done,
     New,
-    Playing
+    _Playing,
 }
 
 #[derive(Debug)]
-pub struct Puzzle<T, M> {
+pub struct Puzzle<T: Player> {
     pub board: T,
-    moves: Vec<M>,
-    task: String,
-    state: State
+    moves: Vec<T::Move>,
+    _task: String,
+    _state: State,
 }
 
-impl<T: FromStr<Err = E>, M, E> Puzzle<T, M> {
+impl<T: FromStr<Err = E> + Player, E> Puzzle<T> {
     pub fn new(task: &str) -> Result<Self, E> {
         Ok(Self {
             board: task.parse()?,
             moves: vec![],
-            task: task.to_string(),
-            state: State::New,
+            _task: task.to_string(),
+            _state: State::New,
         })
+    }
+}
+
+impl<T: Player<Move = crate::board::Move> + LemmaBasedGridSolver<PatternLemma>>
+    LemmaBasedGridSolver<PatternLemma> for Puzzle<T>
+{
+    fn apply(&mut self, l: &PatternLemma) -> bool {
+        for m in &l.solution {
+            self.moves.push(m.clone());
+        }
+        self.board.apply(l)
     }
 }
 
@@ -32,19 +45,17 @@ pub trait Player {
     fn play(&mut self, r#move: Self::Move) -> bool;
 }
 
-impl<T: Player<Move = M>, M: Clone> Player for Puzzle<T, M> {
+impl<T: Player<Move = M>, M: Clone> Player for Puzzle<T> {
     type Move = M;
 
-    fn play(&mut self, m: Self::Move) -> bool {
+    fn play(&mut self, m: M) -> bool {
         self.moves.push(m.clone());
         self.board.play(m)
     }
 }
 
-pub trait LemmaBasedGridSolver {
-    type Lemma;
-
-    fn apply(&mut self, l: &Self::Lemma) -> bool;
+pub trait LemmaBasedGridSolver<Lemma> {
+    fn apply(&mut self, l: &Lemma) -> bool;
 }
 
 pub trait PatternMatch {
