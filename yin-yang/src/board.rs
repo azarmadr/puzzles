@@ -127,3 +127,19 @@ impl FromStr for Board {
         Ok(Board { width, grid })
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct Move {
+    pub x: usize,
+    pub y: usize,
+    pub val: Tile
+}
+
+impl crate::puzzle::Player for Board {
+    type Move = Move;
+
+    fn play(&mut self, m: Move) -> bool {
+        self.grid[m.y * self.width + m.x] = m.val;
+        true
+    }
+}
