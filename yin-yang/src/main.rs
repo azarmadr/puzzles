@@ -6,6 +6,7 @@ use puzzle::*;
 
 fn main() -> Result<(), BoardError> {
     let mut p: Puzzle<Board, Move> = Puzzle::new("6;hBdWaBWbWBdWaBaWBWd")?;
+    println!("{p:?}\n{}", p.board);
     let _ = p.play(Move {x: 0, y:4, val: Tile::Black});
     let _ = p.play(Move {x: 0, y:3, val: Tile::Black});
     let _ = p.play(Move {x: 0, y:2, val: Tile::Black});

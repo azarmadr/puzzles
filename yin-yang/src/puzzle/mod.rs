@@ -40,3 +40,13 @@ impl<T: Player<Move = M>, M: Clone> Player for Puzzle<T, M> {
         self.board.play(m)
     }
 }
+
+pub trait LemmaBasedGridSolver {
+    type Lemma;
+
+    fn apply(&mut self, l: &Self::Lemma) -> bool;
+}
+
+pub trait PatternMatch {
+    fn find_index(&self, other: &Self) -> Option<usize>;
+}

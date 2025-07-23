@@ -1,6 +1,7 @@
 use std::{fmt, iter, num::ParseIntError, str::FromStr};
+use crate::puzzle::{Player, PatternMatch, LemmaBasedGridSolver};
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Tile {
     None,
     Black,
@@ -14,8 +15,8 @@ impl fmt::Display for Tile {
             f,
             "{}",
             match self {
-                // ·
-                White => "██", // "■",
+                // · // "■",
+                White => "██",
                 Black => "░░",
                 None => "::",
             }
@@ -36,8 +37,7 @@ impl TryFrom<char> for Tile {
     }
 }
 
-#[derive(Debug)]
-#[allow(unused)]
+#[derive(Debug, PartialEq)]
 pub struct Board {
     width: usize,
     grid: Vec<Tile>,
@@ -57,6 +57,24 @@ impl Board {
     #[inline]
     pub fn size(&self) -> usize {
         self.grid.len()
+    }
+
+    #[inline]
+    fn to_xy(&self, i: usize) -> (usize, usize) {
+        (i % self.width, i / self.width)
+    }
+
+    #[inline]
+    fn to_index(&self, x: usize, y:usize) -> usize {
+        self.width * y + x
+    }
+}
+
+impl std::ops::Index<(usize, usize)> for Board {
+    type Output = Tile;
+
+    fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
+        &self.grid[self.to_index(x, y)]
     }
 }
 
@@ -135,11 +153,121 @@ pub struct Move {
     pub val: Tile
 }
 
+impl Move {
+    fn add(&self, at: (usize, usize)) -> Self {
+        Self {
+            x: self.x + at.0,
+            y: self.y + at.1,
+            val: self.val.clone()
+        }
+    }
+}
+
+impl FromStr for Move {
+    type Err = BoardError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut s = s.trim().split_whitespace();
+        let (x, y) = (s.next().unwrap().parse()?, s.next().unwrap().parse()?);
+        let val = s.next().unwrap().chars().next().ok_or(BoardError::Format)?.try_into()?;
+        Ok(Move {x, y, val})
+    }
+
+}
+
 impl crate::puzzle::Player for Board {
     type Move = Move;
 
     fn play(&mut self, m: Move) -> bool {
         self.grid[m.y * self.width + m.x] = m.val;
         true
+    }
+}
+type Moves = Vec<Move>;
+
+pub struct PatternLemma {
+    src: Board,
+    solution: Moves,
+}
+
+impl FromStr for PatternLemma {
+    type Err = BoardError;
+
+    /// parsing from the puzzles.com format with moves attached
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (src, solution) = s.split_once('\n').ok_or(BoardError::Format)?;
+        let src = src.parse()?;
+        let solution = solution.lines()
+            .map(|l| l.parse().unwrap())
+            .collect();
+
+        Ok(Self{
+            src, solution
+        })
+    }
+}
+
+impl LemmaBasedGridSolver for Board {
+    type Lemma = PatternLemma;
+
+    fn apply(&mut self, l: &Self::Lemma) -> bool {
+        if let Some(x) = self.find_index(&l.src) {
+            for m in &l.solution {
+                self.play(m.add(self.to_xy(x)));
+            }
+            return true;
+        }
+        false
+    }
+}
+
+impl crate::PatternMatch for Board {
+    fn find_index(&self, other: &Self) -> Option<usize> {
+        let (width, height) = (other.width(), other.height());
+        for x in 0..(self.width - width) {
+            for y in 0..(self.height() - height) {
+                let mut match_found = true;
+                for i in 0..width {
+                    for j in 0..height {
+                        if self[(x + i, y + j)] != other[(i, j)] {
+                            match_found = false;
+                            break;
+                        }
+                    }
+                    if !match_found {break;}
+                }
+                if match_found {return Some(self.to_index(x, y))}
+            }
+        }
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn match_works() -> Result<(), BoardError>{
+        let board: Board = "6;hBdWaBWbWBdWaBaWBWd".parse()?;
+        let pat: Board = "2;aBWa".parse()?;
+        let pat1: Board = "2;aBWa".parse()?;
+        println!("{board}\n{pat}");
+        assert_eq!(Some(7), board.find_index(&pat));
+
+        assert_eq!(pat, pat1);
+        println!("match_works");
+        Ok(())
+    }
+
+    #[test]
+    fn lemma_applies() -> Result<(), BoardError> {
+        let mut board: Board = "6;hBdWBBWbWBdWaBaWBWd".parse()?;
+        let lemma: PatternLemma = "2;BaBB\n1 0 W".parse()?;
+        println!("{board}\n{}, {:?}",lemma.src, lemma.solution);
+        board.apply(&lemma);
+        println!("{board}");
+        println!("lemma_applies");
+        Ok(())
     }
 }
