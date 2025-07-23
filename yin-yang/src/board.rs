@@ -1,10 +1,26 @@
-use std::{error::Error, num::ParseIntError, str::FromStr};
+use std::{fmt, iter, num::ParseIntError, str::FromStr};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Tile {
     None,
     Black,
     White,
+}
+
+impl fmt::Display for Tile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        use Tile::*;
+        write!(
+            f,
+            "{}",
+            match self {
+                // ·
+                White => "██", // "■",
+                Black => "░░",
+                None => "::",
+            }
+        )
+    }
 }
 
 impl TryFrom<char> for Tile {
@@ -12,19 +28,55 @@ impl TryFrom<char> for Tile {
 
     fn try_from(c: char) -> Result<Tile, Self::Error> {
         match c {
-            'b' => Ok(Tile::Black),
-            'w' => Ok(Tile::White),
+            'b' | 'B' => Ok(Tile::Black),
+            'w' | 'W' => Ok(Tile::White),
             'u' => Ok(Tile::None),
-            _   => Err(BoardError::ParseTile),
+            _ => Err(BoardError::ParseTile),
         }
     }
 }
 
 #[derive(Debug)]
+#[allow(unused)]
 pub struct Board {
     width: usize,
-    size: usize,
     grid: Vec<Tile>,
+}
+
+impl Board {
+    #[inline]
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    #[inline]
+    pub fn height(&self) -> usize {
+        self.grid.len() / self.width
+    }
+
+    #[inline]
+    pub fn size(&self) -> usize {
+        self.grid.len()
+    }
+}
+
+impl std::fmt::Display for Board {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "size: {} x {} | {}",
+            self.width(),
+            self.height(),
+            self.size()
+        )?;
+        for (i, tile) in self.grid.iter().enumerate() {
+            if i % self.width == 0 {
+                write!(f, "\n")?;
+            }
+            write!(f, "{:}", format!("{tile}"))?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -40,35 +92,38 @@ impl std::fmt::Display for BoardError {
     }
 }
 
-impl Error for BoardError {
-    fn description(&self) -> &str {
-        match self {
-            BoardError::ParseWidth => "Unable to parse width",
-            BoardError::ParseTile => "invalid tile char found in grid part of the format",
-            BoardError::Format => "improper format of the string, expecting `;`",
-        }
-    }
-}
+impl std::error::Error for BoardError {}
 
 impl From<ParseIntError> for BoardError {
-    fn from(_err: ParseIntError) -> Self { Self::ParseWidth }
+    fn from(_err: ParseIntError) -> Self {
+        Self::ParseWidth
+    }
 }
 
 impl FromStr for Board {
     type Err = BoardError;
 
+    /// parsing from the puzzles.com format
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (width, grid) = s.split_once(';').ok_or(BoardError::Format)?;
         let width: usize = width.parse()?;
-        let grid: Vec<Tile> = grid.trim().chars().map(|c| {
-            c.try_into()
-        })
-        .map(|r: Result<Tile, BoardError>| r.unwrap())
-        .collect();
-        Ok(Board{
-            width,
-            size: grid.len(),
-            grid
-        })
+        let grid: Vec<Tile> = grid
+            .trim()
+            .chars()
+            .flat_map(|c| {
+                iter::repeat_with(move || match c.clone() {
+                    'W' => Tile::White,
+                    'B' => Tile::Black,
+                    _ => Tile::None,
+                })
+                .take(if c == 'W' || c == 'B' {
+                    1
+                } else {
+                    c.to_digit(36).unwrap() as usize - 9
+                })
+            })
+            .collect();
+        assert_eq!(grid.len(), width * (grid.len() / width));
+        Ok(Board { width, grid })
     }
 }
