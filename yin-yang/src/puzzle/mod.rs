@@ -1,6 +1,8 @@
 use {crate::PatternLemma, std::str::FromStr};
 
+pub mod player;
 pub mod rules;
+pub use player::*;
 
 #[derive(Debug)]
 enum State {
@@ -39,12 +41,6 @@ impl<T: Player<Move = crate::board::Move> + LemmaBasedGridSolver<PatternLemma>>
     }
 }
 
-pub trait Player {
-    type Move;
-
-    fn play(&mut self, r#move: Self::Move) -> bool;
-}
-
 impl<T: Player<Move = M>, M: Clone> Player for Puzzle<T> {
     type Move = M;
 
@@ -52,10 +48,16 @@ impl<T: Player<Move = M>, M: Clone> Player for Puzzle<T> {
         self.moves.push(m.clone());
         self.board.play(m)
     }
+    fn result(&self) -> Option<bool> {self.board.result()}
 }
 
 pub trait LemmaBasedGridSolver<Lemma> {
     fn apply(&mut self, l: &Lemma) -> bool;
+    fn apply_all(&mut self, rules: &Vec<Lemma>) {
+        for rule in rules {
+            let _ = self.apply(&rule);
+        }
+    }
 }
 
 pub trait PatternMatch {

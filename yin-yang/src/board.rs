@@ -1,5 +1,5 @@
 use {
-    crate::puzzle::{LemmaBasedGridSolver, PatternMatch, Player},
+    crate::puzzle::{player::Player, LemmaBasedGridSolver, PatternMatch},
     std::{fmt, iter, num::ParseIntError, str::FromStr},
 };
 
@@ -190,12 +190,17 @@ impl FromStr for Move {
     }
 }
 
-impl crate::puzzle::Player for Board {
+impl Player for Board {
     type Move = Move;
 
     fn play(&mut self, m: Move) -> bool {
         self.grid[m.y * self.width + m.x] = m.val;
         true
+    }
+
+    fn result(&self) -> Option<bool> {
+        // TODO cteate checks
+        None
     }
 }
 type Moves = Vec<Move>;
