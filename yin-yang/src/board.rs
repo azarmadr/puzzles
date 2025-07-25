@@ -88,7 +88,7 @@ impl std::ops::Index<(usize, usize)> for Board {
     }
 }
 
-impl std::fmt::Display for Board {
+impl fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -114,7 +114,7 @@ pub enum BoardError {
     Format,
 }
 
-impl std::fmt::Display for BoardError {
+impl fmt::Display for BoardError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "BoardError is here!")
     }
@@ -213,6 +213,15 @@ pub struct PatternLemma {
 
 impl FromStr for PatternLemma {
     type Err = BoardError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let BoardWithMoves(src, solution) = s.parse()?;
+        Ok(PatternLemma { src, solution })
+    }
+}
+
+pub(crate) struct BoardWithMoves(pub Board, pub Moves);
+impl FromStr for BoardWithMoves {
+    type Err = BoardError;
 
     /// parsing from the puzzles.com format with moves attached
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -220,7 +229,7 @@ impl FromStr for PatternLemma {
         let src = src.parse()?;
         let solution = solution.lines().map(|l| l.parse().unwrap()).collect();
 
-        Ok(Self { src, solution })
+        Ok(BoardWithMoves(src, solution))
     }
 }
 
@@ -237,7 +246,7 @@ impl LemmaBasedGridSolver<PatternLemma> for Board {
     }
 }
 
-impl crate::PatternMatch for Board {
+impl PatternMatch for Board {
     fn find_index(&self, other: &Self) -> Option<usize> {
         let (width, height) = (other.width(), other.height());
         for x in 0..=(self.width - width) {

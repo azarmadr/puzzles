@@ -1,5 +1,5 @@
 use {
-    crate::PatternLemma,
+    crate::board::PatternLemma,
     saphyr::{LoadableYamlNode, Yaml},
     std::{fs::File, io::prelude::*},
 };

@@ -7,7 +7,7 @@ use puzzle::*;
 fn main() -> Result<(), BoardError> {
     let r = rules::read_rules("assets/rules.yml");
     println!("{r:?}");
-    let mut p: Puzzle<Board> = Puzzle::new("6;hBdWaBWbWBdWaBaWBWd")?;
+    let mut p: Puzzle<Board> = "6;hBdWaBWbWBdWaBaWBWd".parse()?;
     println!("start\n{}", p.board);
     let play = move |p: &mut Puzzle<Board>, x, y, val: Tile| {
         let _ = p.play(Move {
