@@ -222,6 +222,7 @@ impl FromStr for PatternLemma {
 impl LemmaBasedGridSolver<PatternLemma> for Board {
     fn apply(&mut self, l: &PatternLemma) -> bool {
         if let Some(x) = self.find_index(&l.src) {
+            println!("Applying {}: at {x} ", l.src);
             for m in &l.solution {
                 self.play(m.add(self.to_xy(x)));
             }
@@ -234,8 +235,8 @@ impl LemmaBasedGridSolver<PatternLemma> for Board {
 impl crate::PatternMatch for Board {
     fn find_index(&self, other: &Self) -> Option<usize> {
         let (width, height) = (other.width(), other.height());
-        for x in 0..(self.width - width) {
-            for y in 0..(self.height() - height) {
+        for x in 0..=(self.width - width) {
+            for y in 0..=(self.height() - height) {
                 let mut match_found = true;
                 for i in 0..width {
                     for j in 0..height {
