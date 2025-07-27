@@ -178,7 +178,10 @@ impl FromStr for Move {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut s = s.trim().split_whitespace();
-        let (x, y) = (s.next().unwrap().parse()?, s.next().unwrap().parse()?);
+        let (x, y) = (
+            s.next().ok_or(BoardError::Format)?.parse()?,
+            s.next().ok_or(BoardError::Format)?.parse()?,
+        );
         let val = s
             .next()
             .unwrap()
@@ -193,8 +196,8 @@ impl FromStr for Move {
 impl Player for Board {
     type Move = Move;
 
-    fn play(&mut self, m: Move) -> bool {
-        self.grid[m.y * self.width + m.x] = m.val;
+    fn play(&mut self, m: &Move) -> bool {
+        self.grid[m.y * self.width + m.x] = m.val.clone();
         true
     }
 
@@ -238,7 +241,7 @@ impl LemmaBasedGridSolver<PatternLemma> for Board {
         if let Some(x) = self.find_index(&l.src) {
             println!("Applying {}: at {x} ", l.src);
             for m in &l.solution {
-                self.play(m.add(self.to_xy(x)));
+                self.play(&m.add(self.to_xy(x)));
             }
             return true;
         }

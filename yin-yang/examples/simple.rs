@@ -1,5 +1,5 @@
 use {
-    std::{env, error::Error, fs},
+    std::{env, fs},
     yin_yang::{
         board::Board,
         puzzle::{rules, PlayerError, Puzzle},
@@ -16,7 +16,6 @@ fn main() -> Result<(), PlayerError> {
         file.clone().replace(".txt", ".sol.txt")
     };
     println!("sol_file:{sol_file}");
-    println!("{:?}", fs::exists(&sol_file));
     if fs::exists(&sol_file).is_ok_and(|x| !x) {
         fs::copy(file, &sol_file)?;
     }

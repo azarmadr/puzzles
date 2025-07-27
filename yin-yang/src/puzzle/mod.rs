@@ -1,5 +1,5 @@
 use {
-    crate::board::{BoardError, BoardWithMoves, PatternLemma},
+    crate::board::{BoardError, PatternLemma},
     std::{fmt, fs, process::exit, str::FromStr},
 };
 
@@ -22,11 +22,13 @@ pub struct Puzzle<T: Player> {
     _state: State,
 }
 
-impl<T: Player<Move = Move>, Move: Clone> Puzzle<T> {
+impl<T, Move> Puzzle<T>
+where T: Player<Move = Move>, Move: Clone
+{
     fn moves(&self) -> &Vec<Move> {
         &self.moves
     }
-    fn reset_to(&mut self, index: usize) -> Result<(), PlayerError> {
+    fn reset_to(&mut self, _index: usize) -> Result<(), PlayerError> {
         todo!()
     }
     pub fn game<Lemma>(rules: &Vec<Lemma>, sol_file: &str) -> Result<(), PlayerError>
@@ -34,16 +36,15 @@ impl<T: Player<Move = Move>, Move: Clone> Puzzle<T> {
         Self: fmt::Display + std::string::ToString + LemmaBasedGridSolver<Lemma> + FromStr,
         Move: fmt::Debug + FromStr,
     {
-        let mut s: Puzzle<T> = fs::read_to_string(sol_file)?
-            .parse()
-            .map_err(|_| PlayerError)?;
+        let sol_contents = fs::read_to_string(sol_file)?;
+        let mut s: Puzzle<T> = sol_contents.parse().map_err(|_| PlayerError)?;
         let mut i = 0;
         println!("{i}: {s}");
         s.apply_all(rules);
         println!("{i}: after applying rules.\n{s}");
         let mut current_move_count = vec![];
 
-        let mut puzzle_out = vec![format!("{}", s.to_string(),)];
+        let mut puzzle_out = vec![format!("{}", sol_contents.trim().to_string(),)];
         if let Some(won) = s.board.result() {
             if won {
                 println!("You completed the puzzle.\nCheckout your moves at `{sol_file}`!!!");
@@ -97,7 +98,7 @@ impl<T: Player<Move = Move>, Move: Clone> Puzzle<T> {
                     println!("{i}: {move:?}");
                     current_move_count.push(s.moves().len());
                     puzzle_out.push(input.clone().trim().to_string());
-                    s.play(r#move?);
+                    s.play(&r#move?);
                     println!("Move {i}:\n{s}");
                     s.apply_all(rules);
                     println!("Solver {i}.\n{s}");
@@ -130,16 +131,24 @@ impl<T: Player<Move = Move>, Move: Clone> Puzzle<T> {
     }
 }
 
-impl<T: Player<Move = Move> + FromStr, Move: FromStr> FromStr for Puzzle<T> {
+impl<T, Move> FromStr for Puzzle<T>
+where
+    T: Player<Move = Move> + FromStr,
+    Move: FromStr,
+{
     type Err = BoardError;
     fn from_str(s: &str) -> Result<Self, BoardError> {
         let (s, moves) = s.split_once('\n').ok_or(BoardError::Format)?;
         let moves = moves
             .lines()
-            .map(|l| l.parse().map_err(|_| BoardError::Format).unwrap())
+            .filter_map(|l| l.parse().ok())
             .collect();
+        let mut board: T = s.parse().map_err(|_| BoardError::Format)?;
+        for m in &moves {
+            board.play(m);
+        }
         Ok(Self {
-            board: s.parse().map_err(|_| BoardError::Format)?,
+            board,
             moves,
             _task: s.to_string(),
             _state: State::New,
@@ -172,7 +181,7 @@ impl<T: Player<Move = Move> + fmt::Display, Move: fmt::Debug> fmt::Display for P
 impl<T: Player<Move = M>, M: Clone> Player for Puzzle<T> {
     type Move = M;
 
-    fn play(&mut self, m: M) -> bool {
+    fn play(&mut self, m: &M) -> bool {
         self.moves.push(m.clone());
         self.board.play(m)
     }

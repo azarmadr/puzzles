@@ -1,4 +1,4 @@
-use std::{error::Error, fmt, io, num::ParseIntError, str};
+use std::{error::Error, io, num::ParseIntError, str};
 
 #[derive(Debug)]
 pub struct PlayerError;
@@ -28,7 +28,7 @@ impl Error for PlayerError {}
 pub trait Player {
     type Move;
 
-    fn play(&mut self, r#move: Self::Move) -> bool;
+    fn play(&mut self, r#move: &Self::Move) -> bool;
     fn result(&self) -> Option<bool>;
     fn solution(&self) -> String {
         todo!()
