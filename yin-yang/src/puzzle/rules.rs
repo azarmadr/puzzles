@@ -1,5 +1,6 @@
+// TODO forgo saphyr for a simpler string based file format
 use {
-    crate::board::PatternLemma,
+    crate::{board::PatternLemma, puzzle::GridTransform},
     saphyr::{LoadableYamlNode, Yaml},
     std::{fs::File, io::prelude::*},
 };
@@ -13,11 +14,32 @@ pub fn read_rules(f: &str) -> Rules {
     let mut rules = vec![];
     for rule in Yaml::load_from_str(&contents).unwrap()[0].to_owned() {
         if let Some(rule) = rule.as_str() {
-            if let Ok(rule) = rule.parse() {
-                rules.push(rule)
+            if let Ok(rule) = rule.parse::<PatternLemma>() {
+                let mut rule_tr = rule.clone();
+
+                // TODO not all are being pushed
+                // can be a method on the rule that can return all possible unique shapes
+                rules.push(rule_tr.clone());
+                rule_tr.neg();
+                rules.push(rule_tr.clone());
+
+                rule_tr.rotate_right();
+                rules.push(rule_tr.clone());
+                rule_tr.neg();
+                rules.push(rule_tr.clone());
+
+                rule_tr.rotate_right();
+                rules.push(rule_tr.clone());
+                rule_tr.neg();
+                rules.push(rule_tr.clone());
+
+                rule_tr.rotate_right();
+                rules.push(rule_tr.clone());
+                rule_tr.neg();
+                rules.push(rule_tr);
             } else {
                 // TODO add line file:line
-                println!("WARN: failed to parse '{rule:?}' as PatternLemma from {f}")
+                println!("WARN: failed to parse '{rule:?}' as PatternLemma from {f}");
             }
         }
     }

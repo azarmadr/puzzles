@@ -1,5 +1,5 @@
 use {
-    crate::puzzle::{player::Player, LemmaBasedGridSolver, PatternMatch},
+    crate::puzzle::{player::Player, GridTransform, LemmaBasedGridSolver, PatternMatch},
     std::{fmt, iter, num::ParseIntError, str::FromStr},
 };
 
@@ -30,16 +30,30 @@ impl TryFrom<char> for Tile {
     type Error = BoardError;
 
     fn try_from(c: char) -> Result<Tile, Self::Error> {
+        use Tile::*;
         match c {
-            'b' | 'B' => Ok(Tile::Black),
-            'w' | 'W' => Ok(Tile::White),
-            'u' => Ok(Tile::None),
+            'b' | 'B' => Ok(Black),
+            'w' | 'W' => Ok(White),
+            'u' => Ok(None),
             _ => Err(BoardError::ParseTile),
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
+impl std::ops::Neg for Tile {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        use Tile::*;
+        match self {
+            Black => White,
+            White => Black,
+            s => s,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct Board {
     width: usize,
     grid: Vec<Tile>,
@@ -49,6 +63,16 @@ impl Board {
     #[inline]
     pub fn width(&self) -> usize {
         self.width
+    }
+
+    #[inline]
+    pub fn cols(&self) -> usize {
+        self.width
+    }
+
+    #[inline]
+    pub fn rows(&self) -> usize {
+        self.height()
     }
 
     #[inline]
@@ -78,6 +102,40 @@ impl Board {
     //     }}
     //     &r.to_owned()
     // }
+}
+
+impl GridTransform for Board {
+    fn flip_cols(&mut self) {
+        for y in 0..self.rows() {
+            let y = y * self.width;
+            self.grid[y..y + self.width].reverse()
+        }
+    }
+
+    fn flip_rows(&mut self) {
+        for x in 0..self.cols() {
+            for y in 0..self.rows() / 2 {
+                let (from, to) = (self.to_index(x, y), self.to_index(x, self.rows() - y - 1));
+                self.grid.swap(from, to)
+            }
+        }
+    }
+
+    fn transpose(&mut self) {
+        for x in 0..self.cols() {
+            for y in x + 1..self.rows() {
+                let (from, to) = (self.to_index(x, y), self.to_index(y, x));
+                self.grid.swap(from, to);
+            }
+        }
+        self.width = self.rows();
+    }
+
+    fn neg(&mut self) {
+        for x in &mut self.grid {
+            *x = -x.clone()
+        }
+    }
 }
 
 impl std::ops::Index<(usize, usize)> for Board {
@@ -208,7 +266,7 @@ impl Player for Board {
 }
 type Moves = Vec<Move>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PatternLemma {
     src: Board,
     pub solution: Moves,
@@ -219,6 +277,43 @@ impl FromStr for PatternLemma {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let BoardWithMoves(src, solution) = s.parse()?;
         Ok(PatternLemma { src, solution })
+    }
+}
+
+impl fmt::Display for PatternLemma {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "PatternLemma: src {}\n with Solution:\n", self.src)?;
+        for (i, m) in self.solution.iter().enumerate() {
+            write!(f, "{i}: {m:?}")?;
+        }
+        Ok(())
+    }
+}
+
+impl GridTransform for PatternLemma {
+    fn flip_cols(&mut self) {
+        self.src.flip_cols();
+        for m in &mut self.solution {
+            m.x = self.src.width - m.x - 1;
+        }
+    }
+    fn flip_rows(&mut self) {
+        self.src.flip_rows();
+        for m in &mut self.solution {
+            m.y = self.src.rows() - m.y - 1;
+        }
+    }
+    fn transpose(&mut self) {
+        self.src.transpose();
+        for m in &mut self.solution {
+            core::mem::swap(&mut m.x, &mut m.y);
+        }
+    }
+    fn neg(&mut self) {
+        self.src.neg();
+        for m in &mut self.solution {
+            m.val = -m.val.clone()
+        }
     }
 }
 
@@ -239,10 +334,10 @@ impl FromStr for BoardWithMoves {
 impl LemmaBasedGridSolver<PatternLemma> for Board {
     fn apply(&mut self, l: &PatternLemma) -> bool {
         if let Some(x) = self.find_index(&l.src) {
-            println!("Applying {}: at {x} ", l.src);
             for m in &l.solution {
                 self.play(&m.add(self.to_xy(x)));
             }
+            println!("Applied {l}: at {x}\n for {self}");
             return true;
         }
         false
@@ -283,11 +378,8 @@ mod tests {
     fn match_works() -> Result<(), BoardError> {
         let board: Board = "6;hBdWaBWbWBdWaBaWBWd".parse()?;
         let pat: Board = "2;aBWa".parse()?;
-        let pat1: Board = "2;aBWa".parse()?;
         println!("{board}\n{pat}");
         assert_eq!(Some(7), board.find_index(&pat));
-
-        assert_eq!(pat, pat1);
         println!("match_works");
         Ok(())
     }
@@ -300,6 +392,35 @@ mod tests {
         board.apply(&lemma);
         println!("{board}");
         println!("lemma_applies");
+        Ok(())
+    }
+
+    #[test]
+    fn check_grid_transforms() -> Result<(), BoardError> {
+        let b1: Board = "2;BaBB".parse()?;
+
+        let b: Board = "2;BBaB".parse()?;
+        let mut b2 = b1.clone();
+        b2.transpose();
+        assert_eq!(b, b2);
+
+        let b: Board = "2;BBBa".parse()?;
+        let mut b2 = b1.clone();
+        b2.flip_rows();
+        assert_eq!(b, b2);
+
+        let b: Board = "2;aBBB".parse()?;
+        let mut b2 = b1.clone();
+        b2.flip_cols();
+        assert_eq!(b, b2);
+
+        let b: Board = "2;BBBa".parse()?;
+        let mut b2 = b1.clone();
+        b2.rotate_right();
+        println!("{b}, {b2}");
+        assert_eq!(b, b2);
+
+        println!("check_grid_transforms works");
         Ok(())
     }
 }

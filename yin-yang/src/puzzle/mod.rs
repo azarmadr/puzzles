@@ -23,7 +23,9 @@ pub struct Puzzle<T: Player> {
 }
 
 impl<T, Move> Puzzle<T>
-where T: Player<Move = Move>, Move: Clone
+where
+    T: Player<Move = Move>,
+    Move: Clone,
 {
     fn moves(&self) -> &Vec<Move> {
         &self.moves
@@ -35,6 +37,7 @@ where T: Player<Move = Move>, Move: Clone
     where
         Self: fmt::Display + std::string::ToString + LemmaBasedGridSolver<Lemma> + FromStr,
         Move: fmt::Debug + FromStr,
+        Lemma: fmt::Debug + fmt::Display,
     {
         let sol_contents = fs::read_to_string(sol_file)?;
         let mut s: Puzzle<T> = sol_contents.parse().map_err(|_| PlayerError)?;
@@ -89,7 +92,9 @@ where T: Player<Move = Move>, Move: Clone
                 Some("cc") => current_move_count.clear(),
                 Some("current_move_count") => println!("{:?}", current_move_count.pop()),
                 Some("C") => println!("{current_move_count:?}"),
-                Some("r") => s.reset_to(res.next().unwrap().parse()?)?,
+                Some("SR") => rules.iter().for_each(|r| println!("rule: {r}")),
+                // TODO reset is not yet supported
+                // Some("r") => s.reset_to(res.next().unwrap().parse()?)?,
                 Some("p") => println!("Board:\n{s}"),
                 Some(x) if x.starts_with(|c: char| c.is_digit(10)) => {
                     i += 1;
@@ -139,10 +144,7 @@ where
     type Err = BoardError;
     fn from_str(s: &str) -> Result<Self, BoardError> {
         let (s, moves) = s.split_once('\n').ok_or(BoardError::Format)?;
-        let moves = moves
-            .lines()
-            .filter_map(|l| l.parse().ok())
-            .collect();
+        let moves = moves.lines().filter_map(|l| l.parse().ok()).collect();
         let mut board: T = s.parse().map_err(|_| BoardError::Format)?;
         for m in &moves {
             board.play(m);
@@ -193,12 +195,34 @@ impl<T: Player<Move = M>, M: Clone> Player for Puzzle<T> {
 pub trait LemmaBasedGridSolver<Lemma> {
     fn apply(&mut self, l: &Lemma) -> bool;
     fn apply_all(&mut self, rules: &Vec<Lemma>) {
-        for rule in rules {
-            let _ = self.apply(&rule);
+        for _ in 0..4 {
+            let mut any_rule_applied = false;
+            for rule in rules {
+                any_rule_applied |= self.apply(&rule);
+            }
+            if !any_rule_applied {
+                break;
+            }
         }
     }
 }
 
 pub trait PatternMatch {
     fn find_index(&self, other: &Self) -> Option<usize>;
+}
+
+pub trait GridTransform {
+    /// Rotates self 90 degrees clockwise
+    fn rotate_right(&mut self) {
+        self.transpose();
+        self.flip_cols();
+    }
+    /// Flip (or mirrors) the rows.
+    fn flip_rows(&mut self);
+    /// Flip (or mirrors) the cols.
+    fn flip_cols(&mut self);
+    /// Transpose the grid so that columns become rows in new grid.
+    fn transpose(&mut self);
+
+    fn neg(&mut self);
 }
