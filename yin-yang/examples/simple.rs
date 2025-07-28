@@ -9,13 +9,11 @@ use {
 fn main() -> Result<(), PlayerError> {
     println!("{:?}", env::args());
     let file = env::args().last().unwrap();
-    println!("file:{file}");
     let sol_file = if file.ends_with(".sol.txt") {
         file.clone()
     } else {
         file.clone().replace(".txt", ".sol.txt")
     };
-    println!("sol_file:{sol_file}");
     if fs::exists(&sol_file).is_ok_and(|x| !x) {
         fs::copy(file, &sol_file)?;
     }

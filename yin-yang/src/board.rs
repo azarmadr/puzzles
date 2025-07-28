@@ -122,13 +122,13 @@ impl GridTransform for Board {
     }
 
     fn transpose(&mut self) {
+        assert_eq!(self.cols(), self.rows());
         for x in 0..self.cols() {
-            for y in x + 1..self.rows() {
+            for y in 0..x {
                 let (from, to) = (self.to_index(x, y), self.to_index(y, x));
                 self.grid.swap(from, to);
             }
         }
-        self.width = self.rows();
     }
 
     fn neg(&mut self) {
@@ -255,6 +255,10 @@ impl Player for Board {
     type Move = Move;
 
     fn play(&mut self, m: &Move) -> bool {
+        if self.grid[m.y * self.width + m.x] != Tile::None {
+            eprintln!("{m:?} is trying to overwrite");
+            return false;
+        }
         self.grid[m.y * self.width + m.x] = m.val.clone();
         true
     }
@@ -335,7 +339,13 @@ impl LemmaBasedGridSolver<PatternLemma> for Board {
     fn apply(&mut self, l: &PatternLemma) -> bool {
         if let Some(x) = self.find_index(&l.src) {
             for m in &l.solution {
-                self.play(&m.add(self.to_xy(x)));
+                if !self.play(&m.add(self.to_xy(x))) {
+                    panic!(
+                        "{self} {l} might be wrong \
+                        at {:?}",
+                        self.to_xy(x)
+                    );
+                }
             }
             println!("Applied {l}: at {x}\n for {self}");
             return true;
@@ -396,12 +406,59 @@ mod tests {
     }
 
     #[test]
-    fn check_grid_transforms() -> Result<(), BoardError> {
+    fn check_grid_transforms_for_2x2() -> Result<(), BoardError> {
         let b1: Board = "2;BaBB".parse()?;
 
         let b: Board = "2;BBaB".parse()?;
         let mut b2 = b1.clone();
         b2.transpose();
+        assert_eq!(b, b2);
+
+        let b: Board = "2;BBBa".parse()?;
+        let mut b2 = b1.clone();
+        b2.flip_rows();
+        assert_eq!(b, b2);
+
+        let b: Board = "2;aBBB".parse()?;
+        let mut b2 = b1.clone();
+        b2.flip_cols();
+        assert_eq!(b, b2);
+
+        let b: Board = "2;BBBa".parse()?;
+        let mut b2 = b1.clone();
+        b2.rotate_right();
+        assert_eq!(b, b2);
+
+        println!("check_grid_transforms works");
+        Ok(())
+    }
+
+    #[test]
+    fn check_grid_transforms_for_3x3() -> Result<(), BoardError> {
+        let b: Board = "3;aBBBcBa".parse()?;
+
+        let b1: Board = "3;aBaBaBBb".parse()?;
+        let mut b2 = b.clone();
+        b2.transpose();
+        println!("{b}\n{b1}\n{b2}");
+        assert_eq!(b1, b2);
+
+        let b1: Board = "3;aBaBaBbB".parse()?;
+        let mut b2 = b.clone();
+        b2.rotate_right();
+        println!("{b}\n{b1}\n{b2}");
+        assert_eq!(b1, b2);
+
+        Ok(())
+    }
+    #[test]
+    fn check_grid_transforms_for_2x3() -> Result<(), BoardError> {
+        let b1: Board = "2;WBbBB".parse()?;
+
+        let b: Board = "3;WaBBaB".parse()?;
+        let mut b2 = b1.clone();
+        b2.transpose();
+        println!("{b}, {b2}");
         assert_eq!(b, b2);
 
         let b: Board = "2;BBBa".parse()?;

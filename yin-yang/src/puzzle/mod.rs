@@ -24,13 +24,13 @@ pub struct Puzzle<T: Player> {
 
 impl<T, Move> Puzzle<T>
 where
-    T: Player<Move = Move>,
+    T: Player<Move = Move> + fmt::Display,
     Move: Clone,
 {
     fn moves(&self) -> &Vec<Move> {
         &self.moves
     }
-    fn reset_to(&mut self, _index: usize) -> Result<(), PlayerError> {
+    fn _reset_to(&mut self, _index: usize) -> Result<(), PlayerError> {
         todo!()
     }
     pub fn game<Lemma>(rules: &Vec<Lemma>, sol_file: &str) -> Result<(), PlayerError>
@@ -44,7 +44,7 @@ where
         let mut i = 0;
         println!("{i}: {s}");
         s.apply_all(rules);
-        println!("{i}: after applying rules.\n{s}");
+        println!("{i}: after applying rules.\n{}", s.board);
         let mut current_move_count = vec![];
 
         let mut puzzle_out = vec![format!("{}", sol_contents.trim().to_string(),)];
@@ -95,7 +95,7 @@ where
                 Some("SR") => rules.iter().for_each(|r| println!("rule: {r}")),
                 // TODO reset is not yet supported
                 // Some("r") => s.reset_to(res.next().unwrap().parse()?)?,
-                Some("p") => println!("Board:\n{s}"),
+                Some("p") => println!("Board:\n{}", s.board),
                 Some(x) if x.starts_with(|c: char| c.is_digit(10)) => {
                     i += 1;
                     let r#move = input.parse().map_err(|_| PlayerError);
@@ -106,7 +106,7 @@ where
                     s.play(&r#move?);
                     println!("Move {i}:\n{s}");
                     s.apply_all(rules);
-                    println!("Solver {i}.\n{s}");
+                    println!("Solver {i}.\n{}", s.board);
                     println!("{}", input.clone().trim());
                 }
                 x => {
@@ -195,7 +195,7 @@ impl<T: Player<Move = M>, M: Clone> Player for Puzzle<T> {
 pub trait LemmaBasedGridSolver<Lemma> {
     fn apply(&mut self, l: &Lemma) -> bool;
     fn apply_all(&mut self, rules: &Vec<Lemma>) {
-        for _ in 0..4 {
+        loop {
             let mut any_rule_applied = false;
             for rule in rules {
                 any_rule_applied |= self.apply(&rule);
