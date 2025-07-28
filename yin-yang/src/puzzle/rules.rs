@@ -3,7 +3,7 @@ use {
     crate::{board::PatternLemma, puzzle::GridTransform},
     std::{
         fs::File,
-        io::{prelude::*, BufReader},
+        io::{BufReader, prelude::*},
     },
 };
 
@@ -51,9 +51,8 @@ pub fn read_rules(f: &str) -> Rules {
             buffer.clear();
         }
     }
-    for rule in &rules {
-        println!("{rule}");
-    }
+    // TODO in verbose mode f
+    // for rule in &rules { println!("{rule}"); }
     rules
 }
 

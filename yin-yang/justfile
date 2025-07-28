@@ -1,0 +1,3 @@
+default: (simple "./puzzle/yin-yang.15.2025-08-28.txt")
+import '../just/rust.just'
+simple puzzle: (example "simple" puzzle)

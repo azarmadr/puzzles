@@ -1,5 +1,5 @@
 use {
-    crate::puzzle::{player::Player, GridTransform, LemmaBasedGridSolver, PatternMatch},
+    crate::puzzle::{GridTransform, LemmaBasedGridSolver, PatternMatch, player::Player},
     std::{fmt, iter, num::ParseIntError, str::FromStr},
 };
 

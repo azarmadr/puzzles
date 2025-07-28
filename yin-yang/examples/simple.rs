@@ -2,7 +2,7 @@ use {
     std::{env, fs},
     yin_yang::{
         board::Board,
-        puzzle::{rules, PlayerError, Puzzle},
+        puzzle::{PlayerError, Puzzle, rules},
     },
 };
 

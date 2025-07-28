@@ -11,14 +11,14 @@ impl std::fmt::Display for PlayerError {
 
 impl From<ParseIntError> for PlayerError {
     fn from(e: ParseIntError) -> Self {
-        println!("{e}");
+        println!("parseint: {e}");
         Self
     }
 }
 
 impl From<io::Error> for PlayerError {
     fn from(e: io::Error) -> Self {
-        println!("{e}");
+        println!("io: {e}");
         Self
     }
 }

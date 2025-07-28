@@ -38,9 +38,15 @@ where
         Self: fmt::Display + std::string::ToString + LemmaBasedGridSolver<Lemma> + FromStr,
         Move: fmt::Debug + FromStr,
         Lemma: fmt::Debug + fmt::Display,
+        <Puzzle<T> as FromStr>::Err: fmt::Display,
     {
         let sol_contents = fs::read_to_string(sol_file)?;
-        let mut s: Puzzle<T> = sol_contents.parse().map_err(|_| PlayerError)?;
+        let mut s: Puzzle<T> = sol_contents
+            .parse()
+            .map_err(|e: <Puzzle<T> as FromStr>::Err| {
+                println!("failed to parse {}", e.to_string());
+                PlayerError
+            })?;
         let mut i = 0;
         println!("{i}: {s}");
         s.apply_all(rules);
@@ -98,13 +104,15 @@ where
                 Some("p") => println!("Board:\n{}", s.board),
                 Some(x) if x.starts_with(|c: char| c.is_digit(10)) => {
                     i += 1;
-                    let r#move = input.parse().map_err(|_| PlayerError);
-                    // log::info!("[{f}]({row}, {col})");
-                    println!("{i}: {move:?}");
-                    current_move_count.push(s.moves().len());
                     puzzle_out.push(input.clone().trim().to_string());
-                    s.play(&r#move?);
+                    current_move_count.push(s.moves().len());
+                    println!("{i}: {input}");
                     println!("Move {i}:\n{s}");
+                    for m in expand_range_glob(&input) {
+                        let r#move = m.parse().map_err(|_| PlayerError);
+                        // log::info!("[{f}]({row}, {col})");
+                        s.play(&r#move?);
+                    }
                     s.apply_all(rules);
                     println!("Solver {i}.\n{}", s.board);
                     println!("{}", input.clone().trim());
@@ -143,7 +151,7 @@ where
 {
     type Err = BoardError;
     fn from_str(s: &str) -> Result<Self, BoardError> {
-        let (s, moves) = s.split_once('\n').ok_or(BoardError::Format)?;
+        let (s, moves) = s.split_once('\n').unwrap_or_else(|| (s, ""));
         let moves = moves.lines().filter_map(|l| l.parse().ok()).collect();
         let mut board: T = s.parse().map_err(|_| BoardError::Format)?;
         for m in &moves {
@@ -225,4 +233,36 @@ pub trait GridTransform {
     fn transpose(&mut self);
 
     fn neg(&mut self);
+}
+
+fn expand_range_glob(input: &str) -> Vec<String> {
+    if !input.contains(|c| c == ',' || c == '-') {
+        return vec![input.to_string()];
+    }
+
+    let mut result = Vec::new();
+
+    let glob = input
+        .split_whitespace()
+        .find(|s| s.contains(|c| c == ',' || c == '-'))
+        .unwrap();
+
+    for part in glob.split(',') {
+        let range: Vec<&str> = part.split('-').collect();
+        if range.len() == 2 {
+            // Handle range
+            let start = usize::from_str(range[0]).unwrap();
+            let end = usize::from_str(range[1]).unwrap();
+            result.extend(start..=end);
+        } else {
+            // Handle single number
+            let number = usize::from_str(range[0]).unwrap();
+            result.push(number);
+        }
+    }
+
+    result
+        .into_iter()
+        .map(|x| input.replace(glob, &x.to_string()))
+        .collect()
 }

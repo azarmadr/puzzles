@@ -11,3 +11,4 @@ dos2unix:
   fd . -tf -X dos2unix
 
 mod tui
+mod yin-yang
