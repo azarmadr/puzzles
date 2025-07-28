@@ -1,3 +1,6 @@
+get puzzle='yin-yang' size='15':
+  nu etc/get-puzzle.nu {{puzzle}} {{size}}
+
 import 'just/rust.just'
 default: \
     (test "check_grid_transforms_for_3x3") \
@@ -6,4 +9,5 @@ default: \
 
 dos2unix:
   fd . -tf -X dos2unix
+
 mod tui
