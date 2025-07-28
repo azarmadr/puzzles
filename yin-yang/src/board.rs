@@ -150,14 +150,18 @@ impl fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "size: {} x {} | {}",
+            "size: {} x {} | {} | {}% done\n    ",
             self.width(),
             self.height(),
-            self.size()
+            self.size(),
+            self.grid.iter().filter(|x| **x != Tile::None).count() * 100 / self.size()
         )?;
+        for n in 0..self.cols() {
+            write!(f, "{:>2}", n)?
+        }
         for (i, tile) in self.grid.iter().enumerate() {
             if i % self.width == 0 {
-                write!(f, "\n")?;
+                write!(f, "\n {:>2} ", i / self.width)?;
             }
             write!(f, "{:}", format!("{tile}"))?;
         }
@@ -347,7 +351,7 @@ impl LemmaBasedGridSolver<PatternLemma> for Board {
                     );
                 }
             }
-            println!("Applied {l}: at {x}\n for {self}");
+            // println!("Applied {l}: at {x}\n for {self}");
             return true;
         }
         false
