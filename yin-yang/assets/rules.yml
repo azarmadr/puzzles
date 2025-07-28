@@ -1,2 +1,25 @@
-- "2;WWWa\n1 1 B"
-- "2;WaBW\n1 0 W"
+2;WWWa
+1 1 B
+
+---
+
+2;WaBW
+1 0 W
+---
+
+3;aWaWaWaWa
+1 1 W
+
+---
+
+3;aWcWWWa
+0 1 B
+
+---
+--- Paste pattern
+3;WWWWBWc
+1 2 B
+
+--- Unsupported 2x3
+--- 2;WBbBB
+--- 0 1 W

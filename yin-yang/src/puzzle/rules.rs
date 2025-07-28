@@ -1,20 +1,30 @@
 // TODO forgo saphyr for a simpler string based file format
 use {
     crate::{board::PatternLemma, puzzle::GridTransform},
-    saphyr::{LoadableYamlNode, Yaml},
-    std::{fs::File, io::prelude::*},
+    std::{
+        fs::File,
+        io::{prelude::*, BufReader},
+    },
 };
 
 pub type Rules = Vec<PatternLemma>;
+// one rule per document
 pub fn read_rules(f: &str) -> Rules {
-    let mut file = File::open(f).unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
+    let file = File::open(f).unwrap();
+    let mut reader = BufReader::new(file);
+    let mut buffer = String::new();
 
     let mut rules = vec![];
-    for rule in Yaml::load_from_str(&contents).unwrap()[0].to_owned() {
-        if let Some(rule) = rule.as_str() {
-            if let Ok(rule) = rule.parse::<PatternLemma>() {
+    loop {
+        let mut tmp_buf = String::new();
+        let ret = reader.read_line(&mut tmp_buf);
+        if ret.is_ok_and(|v| v == 0) {
+            break;
+        }
+        if !tmp_buf.starts_with("---") {
+            buffer += &tmp_buf;
+        } else {
+            if let Ok(rule) = buffer.trim().parse::<PatternLemma>() {
                 let mut rule_tr = rule.clone();
 
                 // TODO not all are being pushed
@@ -37,11 +47,12 @@ pub fn read_rules(f: &str) -> Rules {
                 rules.push(rule_tr.clone());
                 rule_tr.neg();
                 rules.push(rule_tr);
-            } else {
-                // TODO add line file:line
-                println!("WARN: failed to parse '{rule:?}' as PatternLemma from {f}");
             }
+            buffer.clear();
         }
+    }
+    for rule in &rules {
+        println!("{rule}");
     }
     rules
 }
